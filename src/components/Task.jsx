@@ -1,193 +1,374 @@
-
-import React from 'react';
-import './Task.css';
-import Sidebar from './Sidebar';
+import React, { useEffect, useState } from "react";
+import "./Task.css";
+import Sidebar from "./Sidebar";
 import Header from "./Header.jsx";
+import { authService } from "../services/authService";
+
+import {
+  fetchAllTasks,
+  fetchAllUsers,
+  createTask,
+  updateTask,
+  deleteTask,
+  toggleTaskStatus,
+} from "../services/taskService.js";
 
 const Task = () => {
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
-    // todo*: make this component functional by implementing state management and API calls
 
-    return (
-        <div className="dashboard-layout">
-            <Sidebar isOpen={false} onClose={() => {}} />
-            <main className="dashboard-main">
-                <Header
-                    title="Tasks"
-                    subtitle="Manage and organize your tasks"
-                    onToggleSidebar={() => {}}
-                />
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    completed: false,
+    dueDate: "",
+    personId: "",
+    attachments: [],
+  });
 
-                <div className="dashboard-content">
-                    <div className="row">
-                        <div className="col-md-8 mx-auto">
-                            <div className="card shadow-sm task-form-section">
-                                <div className="card-body">
-                                    <h2 className="card-title mb-4">Add New Task</h2>
-                                    <form id="todoForm">
-                                        <div className="mb-3">
-                                            <label htmlFor="todoTitle" className="form-label">Title</label>
-                                            <input type="text" className="form-control" id="todoTitle" required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label htmlFor="todoDescription" className="form-label">Description</label>
-                                            <textarea className="form-control" id="todoDescription" rows="3"></textarea>
-                                        </div>
-                                        <div className="row">
-                                            <div className="col-md-6 mb-3">
-                                                <label htmlFor="todoDueDate" className="form-label">Due Date</label>
-                                                <input type="datetime-local" className="form-control" id="todoDueDate" />
-                                            </div>
-                                            <div className="col-md-6 mb-3">
-                                                <label htmlFor="todoPerson" className="form-label">Assign to Person</label>
-                                                <select className="form-select" id="todoPerson">
-                                                    <option value="">-- Select Person (Optional) --</option>
-                                                    <option value="1">Mehrdad Javan</option>
-                                                    <option value="2">Simon Elbrink</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Attachments</label>
-                                            <div className="input-group mb-3">
-                                                <input type="file" className="form-control" id="todoAttachments" multiple />
-                                                <button className="btn btn-outline-secondary" type="button">
-                                                    <i className="bi bi-x-lg"></i>
-                                                </button>
-                                            </div>
-                                            <div className="file-list" id="attachmentPreview"></div>
-                                        </div>
-                                        <div className="d-grid gap-2 d-md-flex justify-content-md-end">
-                                            <button type="submit" className="btn btn-primary">
-                                                <i className="bi bi-plus-lg me-2"></i>
-                                                Add Task
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+  // inline date formatter
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
-                            <div className="card shadow-sm tasks-list mt-4">
-                                <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                                    <h5 className="card-title mb-0">Tasks</h5>
-                                    <div className="btn-group">
-                                        <button className="btn btn-outline-secondary btn-sm" title="Filter">
-                                            <i className="bi bi-funnel"></i>
-                                        </button>
-                                        <button className="btn btn-outline-secondary btn-sm" title="Sort">
-                                            <i className="bi bi-sort-down"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="card-body">
-                                    <div className="list-group">
-                                        {/* Task 1 */}
-                                        <div className="list-group-item list-group-item-action">
-                                            <div className="d-flex w-100 justify-content-between align-items-start">
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between">
-                                                        <h6 className="mb-1">Complete Project Documentation</h6>
-                                                        <small className="text-muted ms-2">Created: 2025-08-07</small>
-                                                    </div>
-                                                    <p className="mb-1 text-muted small">Write comprehensive documentation for the new features</p>
-                                                    <div className="d-flex align-items-center flex-wrap">
-                                                        <small className="text-muted me-2">
-                                                            <i className="bi bi-calendar-event"></i> Due: 2025-08-15
-                                                        </small>
-                                                        <span className="badge bg-info me-2">
-                                                            <i className="bi bi-person"></i> Mehrdad Javan
-                                                        </span>
-                                                        <span className="badge bg-warning text-dark me-2">pending</span>
-                                                    </div>
-                                                </div>
-                                                <div className="btn-group ms-3">
-                                                    <button className="btn btn-outline-success btn-sm" title="Complete">
-                                                        <i className="bi bi-check-lg"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-primary btn-sm" title="Edit">
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-danger btn-sm" title="Delete">
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+  useEffect(() => {
+    fetchTasks();
+    fetchUsersList();
+  }, []);
 
-                                        {/* Task 2 */}
-                                        <div className="list-group-item list-group-item-action">
-                                            <div className="d-flex w-100 justify-content-between align-items-start">
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between">
-                                                        <h6 className="mb-1">Review Code Changes</h6>
-                                                        <small className="text-muted ms-2">Created: 2025-08-06</small>
-                                                    </div>
-                                                    <p className="mb-1 text-muted small">Review and approve pending pull requests</p>
-                                                    <div className="d-flex align-items-center flex-wrap">
-                                                        <small className="text-muted me-2">
-                                                            <i className="bi bi-calendar-event"></i> Due: 2025-08-09
-                                                        </small>
-                                                        <span className="badge bg-info me-2">
-                                                            <i className="bi bi-person"></i> Simon Elbrink
-                                                        </span>
-                                                        <span className="badge bg-primary me-2">in-progress</span>
-                                                    </div>
-                                                </div>
-                                                <div className="btn-group ms-3">
-                                                    <button className="btn btn-outline-success btn-sm" title="Complete">
-                                                        <i className="bi bi-check-lg"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-primary btn-sm" title="Edit">
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-danger btn-sm" title="Delete">
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+  // fetch tasks
+  const fetchTasks = async () => {
+    console.log("Fetching tasks...");
+    await fetchAllTasks()
+      .then((res) => {
+        if (res.status === 200) {
+          const normalized = res.data.map((t) => ({
+            ...t,
+            dueDate: t.dueDate ? t.dueDate.slice(0, 16) : "",
+          }));
+          setTasks(normalized);
+        } else {
+          console.log("Unexpected status:", res.status);
+        }
+      })
+      .catch((err) => console.error("Error loading tasks:", err));
+  };
 
-                                        {/* Task 3 */}
-                                        <div className="list-group-item list-group-item-action">
-                                            <div className="d-flex w-100 justify-content-between align-items-start">
-                                                <div className="flex-grow-1">
-                                                    <div className="d-flex justify-content-between">
-                                                        <h6 className="mb-1">Deploy Application Updates</h6>
-                                                        <small className="text-muted ms-2">Created: 2025-08-05</small>
-                                                    </div>
-                                                    <p className="mb-1 text-muted small">Deploy the latest version to production</p>
-                                                    <div className="d-flex align-items-center flex-wrap">
-                                                        <small className="text-muted me-2">
-                                                            <i className="bi bi-calendar-event"></i> Due: 2025-08-07
-                                                        </small>
-                                                        <span className="badge bg-info me-2">
-                                                            <i className="bi bi-person"></i> Mehrdad Javan
-                                                        </span>
-                                                        <span className="badge bg-success me-2">completed</span>
-                                                    </div>
-                                                </div>
-                                                <div className="btn-group ms-3">
-                                                    <button className="btn btn-outline-success btn-sm" title="Complete">
-                                                        <i className="bi bi-check-lg"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-primary btn-sm" title="Edit">
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button className="btn btn-outline-danger btn-sm" title="Delete">
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+  // fetch users
+  const fetchUsersList = async () => {
+    await fetchAllUsers()
+      .then((res) => {
+        if (res.status === 200) {
+          setUsers(res.data);
+        }
+      })
+      .catch((err) => console.error("Error loading users:", err));
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleFiles = (e) => {
+    setForm({ ...form, attachments: Array.from(e.target.files) });
+  };
+
+  const startEdit = (task) => {
+    setEditing(task.id);
+    setForm({
+      title: task.title,
+      description: task.description,
+      completed: task.completed,
+      dueDate: task.dueDate,
+      personId: task.personId || "",
+      attachments: [],
+    });
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: "",
+      description: "",
+      completed: false,
+      dueDate: "",
+      personId: "",
+      attachments: [],
+    });
+    setEditing(null);
+  };
+
+  // submit form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editing) {
+        await updateTask(editing, form);
+      } else {
+        await createTask(form);
+      }
+      resetForm();
+      fetchTasks();
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+  };
+
+const handleDelete = async (id) => {
+  const user = authService.getCurrentUser();
+   console.log("Current user object:", user);
+
+  if (!authService.isAdmin(user)) {
+    setErrorMsg("❌ You are not allowed to delete tasks.");
+    return;
+  }
+
+  if (!window.confirm("Delete this task?")) return;
+
+  setTasks((prev) => prev.filter((t) => t.id !== id));
+  if (editing === id) resetForm();
+
+  try {
+    const res = await deleteTask(id);
+    if (res.status === 200 || res.status === 204) {
+      console.log("Task deleted successfully.");
+    }
+  } catch (err) {
+    console.error("Delete failed:", err);
+  }
+};
+
+  const handleToggle = async (task) => {
+   
+
+    try {
+      await toggleTaskStatus(task);
+      fetchTasks();
+    } catch (err) {
+      console.error("Toggle failed:", err);
+    }
+  };
+
+  return (
+    <div className="dashboard-layout">
+      <Sidebar isOpen={false} onClose={() => {}} />
+      <main className="dashboard-main">
+        <Header
+          title="Tasks"
+          subtitle="Manage and organize your tasks"
+          onToggleSidebar={() => {}}
+        />
+
+        <div className="dashboard-content">
+          <div className="row">
+            <div className="col-md-8 mx-auto" >
+     {errorMsg && (
+    <div className="alert alert-danger d-flex justify-content-between align-items-center">
+      <div>{errorMsg}</div>
+      <button
+        type="button"
+        className="btn-close"
+        onClick={() => setErrorMsg("")}
+      />
+    </div>
+  )}
+  
+              {/* form */}
+              <div className="card shadow-sm task-form-section">
+                <div className="card-body">
+                  <h2 className="card-title mb-4">
+                    {editing ? "Edit Task" : "Add New Task"}
+                  </h2>
+
+                  <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                      <label className="form-label">Title</label>
+                      <input
+                        type="text"
+                        name="title"
+                        className="form-control"
+                        required
+                        value={form.title}
+                        onChange={handleChange}
+                      />
                     </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Description</label>
+                      <textarea
+                        name="description"
+                        className="form-control"
+                        rows="3"
+                        required
+                        value={form.description}
+                        onChange={handleChange}
+                      ></textarea>
+                    </div>
+
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Due Date</label>
+                        <input
+                          type="datetime-local"
+                          name="dueDate"
+                          className="form-control"
+                          value={form.dueDate}
+                          onChange={handleChange}
+                          min={new Date().toISOString().slice(0, 16)}
+                          required
+                        />
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Assign to</label>
+                        <select
+                          className="form-select"
+                          name="personId"
+                          value={form.personId}
+                          onChange={handleChange}
+                        >
+                          <option value="">-- Optional --</option>
+                          {users.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Attachments</label>
+                      <div className="input-group mb-2">
+                        <input
+                          type="file"
+                          multiple
+                          className="form-control"
+                          onChange={handleFiles}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          onClick={() => setForm({ ...form, attachments: [] })}
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
+                      </div>
+                      <div className="small text-muted">
+                        {form.attachments.map((f, i) => (
+                          <div key={i}>{f.name}</div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="d-flex justify-content-end">
+                      <button type="submit" className="btn btn-primary btn-sm">
+                        <i className="bi bi-plus-lg me-1"></i>
+                        {editing ? "Update Task" : "Add Task"}
+                      </button>
+                      {editing && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm ms-2"
+                          onClick={resetForm}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </form>
                 </div>
-            </main>
+              </div>
+
+              {/* list */}
+              <div className="card shadow-sm tasks-list mt-4">
+                <div className="card-header bg-white">
+                  <h5 className="card-title mb-0">Tasks</h5>
+                </div>
+                <div className="card-body">
+                  {tasks.length === 0 && (
+                    <p className="text-muted">No tasks yet.</p>
+                  )}
+                  <div className="list-group">
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                      >
+                        <div className="flex-grow-1">
+                          <h6 className="mb-1">{task.title}</h6>
+                          <small className="text-muted">
+                            {formatDate(task.createdAt)}
+                          </small>
+                          <p className="mb-1 small text-muted">
+                            {task.description}
+                          </p>
+                          <div>
+                            <span className="me-2">
+                              <i className="bi bi-calendar-event"></i>{" "}
+                              {formatDate(task.dueDate)}
+                            </span>
+                            <span className="badge bg-info me-2">
+                              <i className="bi bi-person"></i> {task.personId}
+                            </span>
+                            <span
+                              className={
+                                task.completed
+                                  ? "badge bg-success"
+                                  : "badge bg-warning text-dark"
+                              }
+                            >
+                              {task.completed ? "Done" : "Pending"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="btn-group btn-group-sm ms-3">
+                          <button
+                            type="button"
+                            className="btn btn-outline-success"
+                            onClick={() => handleToggle(task)}
+                            title="Complete"
+                          >
+                            <i className="bi bi-check-lg"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary"
+                            onClick={() => startEdit(task)}
+                            title="Edit"
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger"
+                            onClick={() => handleDelete(task.id)}
+                            title="Delete"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
-    );
+      </main>
+    </div>
+  );
 };
 
 export default Task;
