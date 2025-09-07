@@ -75,15 +75,15 @@ const Task = () => {
       })
       .catch((err) => console.error("Error loading users:", err));
   };
-
+//Updates form values when typing in inputs
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
-
+//Handles file uploads, stores files in attachments
   const handleFiles = (e) => {
     setForm({ ...form, attachments: Array.from(e.target.files) });
   };
-
+//Pre-fills the form with task values so the user can edit
   const startEdit = (task) => {
     setEditing(task.id);
     setForm({
@@ -95,7 +95,7 @@ const Task = () => {
       attachments: [],
     });
   };
-
+//Clears form after submitting or canceling edit
   const resetForm = () => {
     setForm({
       title: "",
