@@ -5,6 +5,7 @@ import Dashboard from '../components/Dashboard';
 import Task from '../components/Task';
 import NotFound from "../components/NotFound";
 import RoleProtectedRoute from "./RoleProtectedRoute.jsx";
+import Teams from '../components/Teams';
 
 const AppRoutes = () => {
     const { hasRole } = useAuth();
@@ -22,7 +23,14 @@ const AppRoutes = () => {
                     </RoleProtectedRoute>
                 } />
             )}
-           
+           {/* Teams route - only for admin */}
+{hasRole('ROLE_ADMIN') && (
+    <Route path="/dashboard/teams" element={
+        <RoleProtectedRoute requiredRoles={['ROLE_ADMIN']}>
+            <Teams />
+        </RoleProtectedRoute>
+    } />
+)}
 
             {/* Tasks route - for both admin and user */}
             <Route path="/dashboard/tasks" element={
